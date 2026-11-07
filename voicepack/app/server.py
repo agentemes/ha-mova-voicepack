@@ -114,6 +114,22 @@ def ha_service(domain, service, data):
 async def index(_req):
     return web.FileResponse(INDEX)
 
+# static assets for the installable web app (manifest + icons)
+STATIC_DIR = os.path.join(HERE, "static")
+ASSET_TYPES = {
+    "manifest.webmanifest": "application/manifest+json",
+    "icon-192.png": "image/png",
+    "icon-512.png": "image/png",
+    "apple-touch-icon.png": "image/png",
+}
+async def asset(req):
+    name = os.path.basename(req.match_info.get("name", ""))
+    ctype = ASSET_TYPES.get(name)
+    path = os.path.join(STATIC_DIR, name)
+    if not ctype or not os.path.isfile(path):
+        return web.Response(status=404, text="not found")
+    return web.FileResponse(path, headers={"Content-Type": ctype})
+
 async def status(_req):
     c = load_config()
     out = {
@@ -291,6 +307,10 @@ def make_app():
     app = web.Application(client_max_size=64 * 1024 * 1024)
     app.add_routes([
         web.get("/", index),
+        web.get("/{name:manifest.webmanifest}", asset),
+        web.get("/{name:icon-192.png}", asset),
+        web.get("/{name:icon-512.png}", asset),
+        web.get("/{name:apple-touch-icon.png}", asset),
         web.get("/api/status", status),
         web.post("/api/base", upload_base),
         web.post("/api/slot", set_slot),

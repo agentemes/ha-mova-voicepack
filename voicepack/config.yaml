@@ -1,5 +1,5 @@
 name: MOVA Custom Voice Pack
-version: "1.0.0"
+version: "1.1.0"
 slug: mova_voicepack
 description: >-
   Build and install custom voice packs for MOVA/Dreame robot vacuums from typed
@@ -13,6 +13,10 @@ boot: manual
 init: false
 ingress: true
 ingress_port: 8099
+ports:
+  8099/tcp: 8099
+ports_description:
+  8099/tcp: Web app (add to your phone home screen) — http://<HA-IP>:8099
 panel_icon: mdi:robot-vacuum-variant
 panel_title: Voice Pack
 hassio_api: true
