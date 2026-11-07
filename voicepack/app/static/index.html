@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MOVA Voice Pack</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121923; --panel2:#0e141c; --line:#1f2a36;
+    --fg:#e8eef5; --mut:#8aa0b6; --accent:#2fb6a8; --accent2:#1b8f84;
+    --warn:#e0a53f; --bad:#e2544e; --good:#49c17a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    padding:16px;max-width:760px;margin-inline:auto}
+  h1{font-size:19px;margin:.2em 0 .1em;letter-spacing:.2px}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;margin:12px 0}
+  .card h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+  .mut{color:var(--mut);font-size:13px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  label.seg{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--mut)}
+  input[type=text],textarea{width:100%;background:var(--panel2);border:1px solid var(--line);
+    color:var(--fg);border-radius:10px;padding:10px 12px;font:inherit;resize:vertical}
+  textarea{min-height:52px}
+  button{background:var(--accent);color:#04120f;border:0;border-radius:10px;
+    padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}
+  button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line);font-weight:500}
+  button.sm{padding:6px 10px;font-size:13px}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .pill{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
+  .pill.on{color:var(--good);border-color:#214c38;background:#0f1d16}
+  .pill.off{color:var(--warn);border-color:#4a3a18;background:#1c1710}
+  .big{display:flex;gap:10px;margin:16px 0 4px}
+  .big button{flex:1;padding:14px}
+  #log{white-space:pre-wrap;font:12px ui-monospace,Consolas,monospace;color:var(--mut);
+    background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    padding:10px;margin-top:12px;min-height:20px}
+  .hide{display:none!important}
+  .trigger .state{font-size:12px;color:var(--mut);margin:2px 0 8px}
+  .filebtn{position:relative;overflow:hidden}
+  .filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+  <h1>MOVA Custom Voice Pack</h1>
+  <p class="sub">Type what the robot should say, or upload your own audio — per trigger. Build, then install over the LAN.</p>
+
+  <div class="card" id="baseCard">
+    <h2>Base pack <span id="basePill" class="pill off">not loaded</span></h2>
+    <p class="mut">One-time: upload the base pack file you were given. It stays on this box and is never shared.</p>
+    <div class="row">
+      <button class="ghost filebtn" id="baseBtn">Upload base pack…<input type="file" id="baseFile" accept=".gz,.tgz,.tar.gz"></button>
+      <span class="mut" id="baseMsg"></span>
+    </div>
+  </div>
+
+  <div id="triggers"></div>
+
+  <div class="big">
+    <button id="buildBtn">Build pack</button>
+    <button id="installBtn" class="ghost">Install to robot</button>
+    <button id="playBtn" class="ghost">▶ Play now</button>
+  </div>
+  <p class="mut" id="buildState"></p>
+
+  <div id="log"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const log = (m, bad) => { const l=$("#log"); l.textContent = (bad?"⚠ ":"")+m; };
+async function j(url, opt){ const r=await fetch(url,opt); let d={}; try{d=await r.json()}catch(e){}
+  if(!r.ok) throw new Error(d.error || ("HTTP "+r.status)); return d; }
+
+let STATE = null;
+
+function triggerCard(t){
+  const s = t.slot;
+  const kind = s ? (s.type==="audio"?"uploaded audio":("“"+(s.text||"")+"”")) : "default (unchanged)";
+  return `<div class="card trigger" data-k="${t.key}">
+    <h2>${t.label}</h2>
+    <div class="state">Now: ${s? "<b>"+kind+"</b>" : kind}</div>
+    <div class="row" style="margin-bottom:8px">
+      <label class="seg"><input type="radio" name="m_${t.key}" value="text" ${!s||s.type!=='audio'?'checked':''}> Type text</label>
+      <label class="seg"><input type="radio" name="m_${t.key}" value="audio" ${s&&s.type==='audio'?'checked':''}> Upload audio</label>
+    </div>
+    <div class="mode-text">
+      <input type="text" class="txt" placeholder="What should it say?" value="${s&&s.type==='text'?(s.text||'').replace(/"/g,'&quot;'):''}">
+    </div>
+    <div class="mode-audio hide">
+      <button class="ghost sm filebtn">Choose audio file…<input type="file" class="afile" accept="audio/*,.ogg,.mp3,.wav,.m4a"></button>
+      <span class="mut afname"></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="sm prev ghost">Preview</button>
+      <button class="sm save">Save</button>
+      <button class="sm clear ghost ${s?'':'hide'}">Clear</button>
+    </div>
+  </div>`;
+}
+
+function wireCard(el){
+  const k = el.dataset.k;
+  const radios = el.querySelectorAll(`input[name=m_${k}]`);
+  const mt = el.querySelector(".mode-text"), ma = el.querySelector(".mode-audio");
+  const sync = () => { const a = el.querySelector(`input[name=m_${k}]:checked`).value==="audio";
+    ma.classList.toggle("hide",!a); mt.classList.toggle("hide",a); };
+  radios.forEach(r=>r.onchange=sync); sync();
+  const afile = el.querySelector(".afile");
+  afile.onchange = () => el.querySelector(".afname").textContent = afile.files[0]?afile.files[0].name:"";
+
+  el.querySelector(".prev").onclick = async () => {
+    try{
+      const a = el.querySelector(`input[name=m_${k}]:checked`).value==="audio";
+      if(a){ const f=afile.files[0]; if(!f) return log("Choose a file first",1);
+        playBlob(f);  // browser decodes mp3/wav/ogg/m4a locally
+      } else {
+        const txt = el.querySelector(".txt").value.trim(); if(!txt) return log("Type something first",1);
+        const r = await fetch("api/preview",{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({type:"text",text:txt})});
+        if(!r.ok){ const d=await r.json().catch(()=>({})); return log(d.error||"preview failed",1); }
+        playBlob(await r.blob());
+      }
+    }catch(e){ log(e.message,1); }
+  };
+
+  el.querySelector(".save").onclick = async () => {
+    try{
+      const fd = new FormData(); fd.append("key",k);
+      const a = el.querySelector(`input[name=m_${k}]:checked`).value==="audio";
+      if(a){ const f=afile.files[0]; if(!f) return log("Choose a file first",1);
+        fd.append("type","audio"); fd.append("file",f,f.name); }
+      else { fd.append("type","text"); fd.append("text", el.querySelector(".txt").value); }
+      await j("api/slot",{method:"POST",body:fd});
+      log(STATE_LABEL(k)+" saved."); await refresh();
+    }catch(e){ log(e.message,1); }
+  };
+
+  el.querySelector(".clear").onclick = async () => {
+    try{ await j("api/slot/clear",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({key:k})}); log(STATE_LABEL(k)+" reset to default."); await refresh(); }
+    catch(e){ log(e.message,1); }
+  };
+}
+
+function STATE_LABEL(k){ return (STATE.triggers.find(t=>t.key===k)||{}).label || k; }
+
+function playBlob(b){ const u=URL.createObjectURL(b); const a=new Audio(u); a.play();
+  a.onended=()=>URL.revokeObjectURL(u); }
+
+$("#baseFile").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  $("#baseMsg").textContent = "uploading "+f.name+" …";
+  try{ const fd=new FormData(); fd.append("file",f,f.name);
+    const d = await j("api/base",{method:"POST",body:fd});
+    $("#baseMsg").textContent = "loaded "+d.clips+" clips."; await refresh();
+  }catch(err){ $("#baseMsg").textContent=""; log(err.message,1); }
+};
+
+$("#buildBtn").onclick = async () => {
+  try{ log("Building…"); const d=await j("api/build",{method:"POST"});
+    log("Built. "+(d.size/1024|0)+" KB, md5 "+d.md5.slice(0,8)+". Now press Install."); await refresh();
+  }catch(e){ log(e.message,1); }
+};
+$("#installBtn").onclick = async () => {
+  try{ log("Installing to robot (it fetches over the LAN)…");
+    await j("api/install",{method:"POST"}); log("Install command sent. The robot will apply it shortly."); await refresh();
+  }catch(e){ log(e.message,1); }
+};
+$("#playBtn").onclick = async () => {
+  try{ await j("api/playnow",{method:"POST"}); log("Play-now (locate) sent."); }
+  catch(e){ log(e.message,1); }
+};
+
+async function refresh(){
+  STATE = await j("api/status");
+  $("#basePill").className = "pill "+(STATE.base_ready?"on":"off");
+  $("#basePill").textContent = STATE.base_ready?"loaded":"not loaded";
+  $("#baseCard").classList.toggle("hide", STATE.base_ready && location.hash!=="#base");
+  $("#triggers").innerHTML = STATE.triggers.map(triggerCard).join("");
+  document.querySelectorAll(".trigger").forEach(wireCard);
+  const b = STATE.last_build, ins = STATE.installed;
+  $("#buildState").textContent =
+    (b? "Last build: md5 "+b.md5.slice(0,8)+", "+(b.size/1024|0)+" KB. ":"") +
+    (ins? "Installed md5 "+ins.md5.slice(0,8)+".":"Not installed yet.");
+  $("#buildBtn").disabled = !STATE.base_ready;
+}
+refresh().catch(e=>log(e.message,1));
+</script>
+</body>
+</html>

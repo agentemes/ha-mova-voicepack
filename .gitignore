@@ -1,0 +1,11 @@
+# Never commit proprietary audio, built packs, or runtime data.
+*.tar.gz
+*.ogg
+*.wav
+*.onnx
+*.onnx.json
+base/
+data/
+uploads/
+__pycache__/
+*.pyc
