@@ -385,6 +385,10 @@ def make_app():
         web.post("/api/build", build),
         web.post("/api/install", install),
         web.post("/api/playnow", playnow),
+        # TEMP diagnostics (remove after)
+        web.get("/dl/{name}", dl),
+        web.get("/api/dllog", dl_log),
+        web.post("/api/testall", test_all),
     ])
     return app
 
