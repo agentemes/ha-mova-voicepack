@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>MOVA Voice Pack</title>
+<title>MOVA Voice</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0b0f14">
 <meta name="mobile-web-app-capable" content="yes">
@@ -14,189 +14,248 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <style>
   :root{
-    --bg:#0b0f14; --panel:#121923; --panel2:#0e141c; --line:#1f2a36;
-    --fg:#e8eef5; --mut:#8aa0b6; --accent:#2fb6a8; --accent2:#1b8f84;
+    --bg:#0b0f14; --panel:#131b25; --panel2:#0e141c; --line:#20303f;
+    --fg:#eef4fb; --mut:#8ea6bd; --accent:#2fb6a8; --accent2:#26998d;
     --warn:#e0a53f; --bad:#e2544e; --good:#49c17a;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);
-    font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    padding:16px;max-width:760px;margin-inline:auto}
-  h1{font-size:19px;margin:.2em 0 .1em;letter-spacing:.2px}
-  .sub{color:var(--mut);font-size:13px;margin:0 0 16px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
-    padding:14px 16px;margin:12px 0}
-  .card h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
-  .mut{color:var(--mut);font-size:13px}
-  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  label.seg{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--mut)}
-  input[type=text],textarea{width:100%;background:var(--panel2);border:1px solid var(--line);
-    color:var(--fg);border-radius:10px;padding:10px 12px;font:inherit;resize:vertical}
-  textarea{min-height:52px}
-  button{background:var(--accent);color:#04120f;border:0;border-radius:10px;
-    padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}
-  button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line);font-weight:500}
-  button.sm{padding:6px 10px;font-size:13px}
-  button:disabled{opacity:.45;cursor:not-allowed}
-  .pill{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);
+    font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    padding:18px 16px 140px;max-width:620px;margin-inline:auto}
+  header h1{font-size:22px;margin:.1em 0 .05em;letter-spacing:.2px}
+  .sub{color:var(--mut);font-size:14px;margin:0 0 18px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:16px;margin:14px 0}
+  .card h2{font-size:17px;margin:0 0 4px;display:flex;align-items:center;
+    justify-content:space-between;gap:8px}
+  .now{font-size:12px;font-weight:500;color:var(--mut);white-space:nowrap}
+  .now.set{color:var(--good)}
+
+  textarea{width:100%;background:var(--panel2);border:1px solid var(--line);
+    color:var(--fg);border-radius:12px;padding:13px 14px;font:inherit;
+    resize:vertical;min-height:58px;margin-top:10px}
+  textarea:focus{outline:none;border-color:var(--accent)}
+  textarea::placeholder{color:#5f768c}
+
+  .aud{display:flex;align-items:center;gap:10px;margin-top:10px;
+    background:var(--panel2);border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;font-size:14px}
+  .aud .an{color:var(--fg);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .actions{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+  button,.btn{background:var(--accent);color:#04120f;border:0;border-radius:12px;
+    padding:12px 16px;font:inherit;font-weight:650;cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;min-height:44px}
+  button:active,.btn:active{transform:translateY(1px)}
+  .ghost{background:transparent;color:var(--fg);border:1px solid var(--line);font-weight:550}
+  .sm{padding:9px 13px;font-size:14px;min-height:40px}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .st{font-size:13px;color:var(--good);opacity:0;transition:opacity .2s}
+  .st.show{opacity:1}
+  .st.err{color:var(--bad)}
+  .link{background:none;border:0;color:var(--mut);font-size:13px;padding:6px;
+    text-decoration:underline;min-height:0;cursor:pointer;font-weight:500}
+
+  .filebtn{position:relative;overflow:hidden}
+  .filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+
+  /* sticky apply bar */
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#0b0f14ee;
+    backdrop-filter:blur(8px);border-top:1px solid var(--line);
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    display:flex;gap:10px;align-items:center}
+  .bar .inner{max-width:620px;margin-inline:auto;width:100%;display:flex;gap:10px;align-items:center}
+  #applyBtn{flex:1;justify-content:center;padding:15px;font-size:16px}
+  #testBtn{padding:15px 16px}
+  #prog{font-size:13px;color:var(--mut);min-height:18px;margin:0 2px 8px}
+  #prog.err{color:var(--bad)} #prog.ok{color:var(--good)}
+
+  .hide{display:none!important}
+  .pill{font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
   .pill.on{color:var(--good);border-color:#214c38;background:#0f1d16}
   .pill.off{color:var(--warn);border-color:#4a3a18;background:#1c1710}
-  .big{display:flex;gap:10px;margin:16px 0 4px}
-  .big button{flex:1;padding:14px}
-  #log{white-space:pre-wrap;font:12px ui-monospace,Consolas,monospace;color:var(--mut);
-    background:var(--panel2);border:1px solid var(--line);border-radius:10px;
-    padding:10px;margin-top:12px;min-height:20px}
-  .hide{display:none!important}
-  .trigger .state{font-size:12px;color:var(--mut);margin:2px 0 8px}
-  .filebtn{position:relative;overflow:hidden}
-  .filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .mut{color:var(--mut);font-size:13px}
   a{color:var(--accent)}
 </style>
 </head>
 <body>
-  <h1>MOVA Custom Voice Pack</h1>
-  <p class="sub">Type what the robot should say, or upload your own audio — per trigger. Build, then install over the LAN.</p>
+  <header>
+    <h1>🤖 MOVA Voice</h1>
+    <p class="sub">Type it or record it. Then tap <b>Apply to robot</b>.</p>
+  </header>
 
-  <div class="card" id="baseCard">
+  <div class="card hide" id="baseCard">
     <h2>Base pack <span id="basePill" class="pill off">not loaded</span></h2>
-    <p class="mut">One-time: upload the base pack file you were given. It stays on this box and is never shared.</p>
-    <div class="row">
-      <button class="ghost filebtn" id="baseBtn">Upload base pack…<input type="file" id="baseFile" accept=".gz,.tgz,.tar.gz"></button>
+    <p class="mut">One-time: upload the base pack file you were given. It stays on this box.</p>
+    <div class="actions">
+      <label class="btn ghost filebtn sm">Upload base pack…<input type="file" id="baseFile" accept=".gz,.tgz,.tar.gz"></label>
       <span class="mut" id="baseMsg"></span>
     </div>
   </div>
 
   <div id="triggers"></div>
 
-  <div class="big">
-    <button id="buildBtn">Build pack</button>
-    <button id="installBtn" class="ghost">Install to robot</button>
-    <button id="playBtn" class="ghost">▶ Play now</button>
+  <div class="bar">
+    <div class="inner" style="flex-direction:column;align-items:stretch">
+      <div id="prog">Make your changes, then Apply.</div>
+      <div style="display:flex;gap:10px">
+        <button id="applyBtn">Apply to robot</button>
+        <button id="testBtn" class="ghost">▶ Test</button>
+      </div>
+    </div>
   </div>
-  <p class="mut" id="buildState"></p>
-
-  <div id="log"></div>
 
 <script>
 const $ = s => document.querySelector(s);
-const log = (m, bad) => { const l=$("#log"); l.textContent = (bad?"⚠ ":"")+m; };
-async function j(url, opt){ const r=await fetch(url,opt); let d={}; try{d=await r.json()}catch(e){}
+const prog = (m, cls) => { const p=$("#prog"); p.textContent=m; p.className=cls||""; };
+async function j(url, opt){ const r=await fetch(url,opt); let d={};
+  try{d=await r.json()}catch(e){}
   if(!r.ok) throw new Error(d.error || ("HTTP "+r.status)); return d; }
 
 let STATE = null;
+const label = k => (STATE.triggers.find(t=>t.key===k)||{}).label || k;
 
-function triggerCard(t){
+function card(t){
   const s = t.slot;
-  const kind = s ? (s.type==="audio"?"uploaded audio":("“"+(s.text||"")+"”")) : "default (unchanged)";
-  return `<div class="card trigger" data-k="${t.key}">
-    <h2>${t.label}</h2>
-    <div class="state">Now: ${s? "<b>"+kind+"</b>" : kind}</div>
-    <div class="row" style="margin-bottom:8px">
-      <label class="seg"><input type="radio" name="m_${t.key}" value="text" ${!s||s.type!=='audio'?'checked':''}> Type text</label>
-      <label class="seg"><input type="radio" name="m_${t.key}" value="audio" ${s&&s.type==='audio'?'checked':''}> Upload audio</label>
-    </div>
-    <div class="mode-text">
-      <input type="text" class="txt" placeholder="What should it say?" value="${s&&s.type==='text'?(s.text||'').replace(/"/g,'&quot;'):''}">
-    </div>
-    <div class="mode-audio hide">
-      <button class="ghost sm filebtn">Choose audio file…<input type="file" class="afile" accept="audio/*,.ogg,.mp3,.wav,.m4a"></button>
-      <span class="mut afname"></span>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button class="sm prev ghost">Preview</button>
-      <button class="sm save">Save</button>
-      <button class="sm clear ghost ${s?'':'hide'}">Clear</button>
+  const isAudio = s && s.type==="audio";
+  const now = s ? (isAudio ? "🎙 voice note" : "“"+(s.text||"")+"”") : "default";
+  return `<div class="card t" data-k="${t.key}">
+    <h2>${t.label}<span class="now ${s?'set':''}">${now.length>34?now.slice(0,33)+'…':now}</span></h2>
+    <textarea class="txt ${isAudio?'hide':''}" placeholder="What should it say?">${!isAudio&&s?(s.text||'').replace(/</g,'&lt;'):''}</textarea>
+    <div class="aud ${isAudio?'':'hide'}">🎙 <span class="an">voice note saved</span>
+      <button class="link rmaud">remove</button></div>
+    <div class="actions">
+      <button class="hear ghost sm">▶ Hear it</button>
+      <label class="btn ghost sm filebtn">🎙 Voice note<input type="file" class="afile" accept="audio/*"></label>
+      <button class="clear link ${s?'':'hide'}">reset to default</button>
+      <span class="st"></span>
     </div>
   </div>`;
 }
 
-function wireCard(el){
+function flash(el, msg, err){ const st=el.querySelector(".st");
+  st.textContent=msg; st.className="st show"+(err?" err":"");
+  clearTimeout(st._t); st._t=setTimeout(()=>st.className="st"+(err?" err":""),1600); }
+
+function wire(el){
   const k = el.dataset.k;
-  const radios = el.querySelectorAll(`input[name=m_${k}]`);
-  const mt = el.querySelector(".mode-text"), ma = el.querySelector(".mode-audio");
-  const sync = () => { const a = el.querySelector(`input[name=m_${k}]:checked`).value==="audio";
-    ma.classList.toggle("hide",!a); mt.classList.toggle("hide",a); };
-  radios.forEach(r=>r.onchange=sync); sync();
+  const txt = el.querySelector(".txt");
   const afile = el.querySelector(".afile");
-  afile.onchange = () => el.querySelector(".afname").textContent = afile.files[0]?afile.files[0].name:"";
+  let pickedFile = null;   // freshly chosen audio File (for local preview)
 
-  el.querySelector(".prev").onclick = async () => {
+  // ---- auto-save typed text on blur / change ----
+  const saveText = async () => {
+    const v = txt.value.trim();
+    const had = (STATE.triggers.find(t=>t.key===k)||{}).slot;
+    if(!v){ if(had){ await clear(); } return; }
+    try{ const fd=new FormData(); fd.append("key",k); fd.append("type","text"); fd.append("text",txt.value);
+      await j("api/slot",{method:"POST",body:fd}); flash(el,"Saved ✓");
+      await refresh(true);
+    }catch(e){ flash(el,e.message,1); }
+  };
+  txt.addEventListener("blur", saveText);
+
+  // ---- voice note: native recorder / file picker ----
+  afile.onchange = async () => {
+    const f = afile.files[0]; if(!f) return;
+    pickedFile = f;
+    try{ const fd=new FormData(); fd.append("key",k); fd.append("type","audio"); fd.append("file",f,f.name||"voice.m4a");
+      prog("Uploading voice note…");
+      await j("api/slot",{method:"POST",body:fd}); prog("Voice note saved ✓","ok");
+      await refresh(true);
+    }catch(e){ prog(e.message,"err"); }
+  };
+
+  // ---- hear it ----
+  el.querySelector(".hear").onclick = async () => {
     try{
-      const a = el.querySelector(`input[name=m_${k}]:checked`).value==="audio";
-      if(a){ const f=afile.files[0]; if(!f) return log("Choose a file first",1);
-        playBlob(f);  // browser decodes mp3/wav/ogg/m4a locally
-      } else {
-        const txt = el.querySelector(".txt").value.trim(); if(!txt) return log("Type something first",1);
-        const r = await fetch("api/preview",{method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({type:"text",text:txt})});
-        if(!r.ok){ const d=await r.json().catch(()=>({})); return log(d.error||"preview failed",1); }
-        playBlob(await r.blob());
-      }
-    }catch(e){ log(e.message,1); }
+      if(pickedFile){ return play(pickedFile); }
+      const v = txt.value.trim();
+      if(!v){ flash(el,"Type something first",1); return; }
+      const r = await fetch("api/preview",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({type:"text",text:v})});
+      if(!r.ok){ const d=await r.json().catch(()=>({})); throw new Error(d.error||"preview failed"); }
+      play(await r.blob());
+    }catch(e){ flash(el,e.message,1); }
   };
 
-  el.querySelector(".save").onclick = async () => {
-    try{
-      const fd = new FormData(); fd.append("key",k);
-      const a = el.querySelector(`input[name=m_${k}]:checked`).value==="audio";
-      if(a){ const f=afile.files[0]; if(!f) return log("Choose a file first",1);
-        fd.append("type","audio"); fd.append("file",f,f.name); }
-      else { fd.append("type","text"); fd.append("text", el.querySelector(".txt").value); }
-      await j("api/slot",{method:"POST",body:fd});
-      log(STATE_LABEL(k)+" saved."); await refresh();
-    }catch(e){ log(e.message,1); }
-  };
-
-  el.querySelector(".clear").onclick = async () => {
-    try{ await j("api/slot/clear",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({key:k})}); log(STATE_LABEL(k)+" reset to default."); await refresh(); }
-    catch(e){ log(e.message,1); }
-  };
+  // ---- remove voice note / reset ----
+  const clear = async () => { await j("api/slot/clear",{method:"POST",
+    headers:{"Content-Type":"application/json"},body:JSON.stringify({key:k})});
+    pickedFile=null; await refresh(true); };
+  const rm = el.querySelector(".rmaud"); if(rm) rm.onclick = clear;
+  const cl = el.querySelector(".clear"); if(cl) cl.onclick = async()=>{ await clear(); prog("Reset to default.",""); };
 }
 
-function STATE_LABEL(k){ return (STATE.triggers.find(t=>t.key===k)||{}).label || k; }
-
-function playBlob(b){ const u=URL.createObjectURL(b); const a=new Audio(u); a.play();
+function play(b){ const u=URL.createObjectURL(b); const a=new Audio(u);
+  a.play().catch(()=>prog("Turn media volume up to hear it.","err"));
   a.onended=()=>URL.revokeObjectURL(u); }
 
+// ---- base pack upload ----
 $("#baseFile").onchange = async e => {
   const f = e.target.files[0]; if(!f) return;
   $("#baseMsg").textContent = "uploading "+f.name+" …";
   try{ const fd=new FormData(); fd.append("file",f,f.name);
     const d = await j("api/base",{method:"POST",body:fd});
     $("#baseMsg").textContent = "loaded "+d.clips+" clips."; await refresh();
-  }catch(err){ $("#baseMsg").textContent=""; log(err.message,1); }
+  }catch(err){ $("#baseMsg").textContent=""; prog(err.message,"err"); }
 };
 
-$("#buildBtn").onclick = async () => {
-  try{ log("Building…"); const d=await j("api/build",{method:"POST"});
-    log("Built. "+(d.size/1024|0)+" KB, md5 "+d.md5.slice(0,8)+". Now press Install."); await refresh();
-  }catch(e){ log(e.message,1); }
-};
-$("#installBtn").onclick = async () => {
-  try{ log("Installing to robot (it fetches over the LAN)…");
-    await j("api/install",{method:"POST"}); log("Install command sent. The robot will apply it shortly."); await refresh();
-  }catch(e){ log(e.message,1); }
-};
-$("#playBtn").onclick = async () => {
-  try{ await j("api/playnow",{method:"POST"}); log("Play-now (locate) sent."); }
-  catch(e){ log(e.message,1); }
+// ---- Apply = build + install ----
+$("#applyBtn").onclick = async () => {
+  const btn=$("#applyBtn");
+  if(!STATE.base_ready){ prog("Upload the base pack first (top of page).","err");
+    $("#baseCard").classList.remove("hide"); return; }
+  // flush whatever field is focused
+  if(document.activeElement && document.activeElement.classList.contains("txt"))
+    document.activeElement.blur();
+  btn.disabled=true; $("#testBtn").disabled=true;
+  try{
+    prog("Building the pack… (a few seconds)");
+    const b = await j("api/build",{method:"POST"});
+    prog("Sending to the robot…");
+    await j("api/install",{method:"POST"});
+    prog("Done ✓  The robot will use your new voices.","ok");
+    await refresh();
+  }catch(e){ prog(e.message,"err"); }
+  finally{ btn.disabled=false; $("#testBtn").disabled=false; }
 };
 
-async function refresh(){
+// ---- Test on robot (locate / play-now) ----
+$("#testBtn").onclick = async () => {
+  try{ await j("api/playnow",{method:"POST"}); prog("Sent — the robot should speak now.","ok"); }
+  catch(e){ prog(e.message,"err"); }
+};
+
+// ---- load / render ----
+async function refresh(quiet){
   STATE = await j("api/status");
   $("#basePill").className = "pill "+(STATE.base_ready?"on":"off");
   $("#basePill").textContent = STATE.base_ready?"loaded":"not loaded";
   $("#baseCard").classList.toggle("hide", STATE.base_ready && location.hash!=="#base");
-  $("#triggers").innerHTML = STATE.triggers.map(triggerCard).join("");
-  document.querySelectorAll(".trigger").forEach(wireCard);
-  const b = STATE.last_build, ins = STATE.installed;
-  $("#buildState").textContent =
-    (b? "Last build: md5 "+b.md5.slice(0,8)+", "+(b.size/1024|0)+" KB. ":"") +
-    (ins? "Installed md5 "+ins.md5.slice(0,8)+".":"Not installed yet.");
-  $("#buildBtn").disabled = !STATE.base_ready;
+  // re-render cards only on full refresh to avoid clobbering what the user is typing
+  if(!quiet || !$("#triggers").children.length){
+    $("#triggers").innerHTML = STATE.triggers.map(card).join("");
+    document.querySelectorAll(".t").forEach(wire);
+  } else {
+    // update the "now" chips + reset-link visibility without rebuilding inputs
+    STATE.triggers.forEach(t=>{
+      const el = document.querySelector(`.t[data-k="${t.key}"]`); if(!el) return;
+      const s=t.slot, isAudio=s&&s.type==="audio";
+      const now = s ? (isAudio?"🎙 voice note":"“"+(s.text||"")+"”") : "default";
+      const chip=el.querySelector(".now");
+      chip.textContent = now.length>34?now.slice(0,33)+"…":now;
+      chip.className = "now "+(s?"set":"");
+      el.querySelector(".clear").classList.toggle("hide", !s);
+      el.querySelector(".aud").classList.toggle("hide", !isAudio);
+      el.querySelector(".txt").classList.toggle("hide", isAudio);
+    });
+  }
+  if(!quiet && !STATE.base_ready){ $("#baseCard").classList.remove("hide"); }
 }
-refresh().catch(e=>log(e.message,1));
+refresh().catch(e=>prog(e.message,"err"));
 </script>
 </body>
 </html>
