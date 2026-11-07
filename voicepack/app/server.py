@@ -302,6 +302,72 @@ async def playnow(_req):
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
 
+# ---- TEMP diagnostics (remove after) --------------------------------------
+DL_LOG = os.path.join(DATA, "dl.log")
+
+async def dl(req):
+    """Logged download route so we can see if the robot actually fetches."""
+    name = os.path.basename(req.match_info.get("name", ""))
+    path = os.path.join(WWW, name)
+    line = f"{int(time.time())} GET /dl/{name} from={req.remote} ua={req.headers.get('User-Agent','')[:60]} range={req.headers.get('Range','')}"
+    print("DLHIT", line, flush=True)
+    try:
+        with open(DL_LOG, "a") as f:
+            f.write(line + "\n")
+    except Exception:
+        pass
+    if not os.path.isfile(path):
+        return web.Response(status=404, text="not found")
+    return web.FileResponse(path)
+
+async def dl_log(_req):
+    try:
+        return web.Response(text=open(DL_LOG).read(), content_type="text/plain")
+    except Exception:
+        return web.Response(text="(no hits yet)", content_type="text/plain")
+
+async def test_all(req):
+    """Override EVERY sound in the pack with one phrase and install it,
+    serving via the logged /dl/ route. Definitive apply + reachability test."""
+    if not base_ready():
+        return web.json_response({"error": "base pack not loaded"}, status=400)
+    data = await req.json() if req.content_type == "application/json" else {}
+    text = (data.get("text") or "custom pack test").strip()
+    work = tempfile.mkdtemp(prefix="vpall_")
+    try:
+        pack = os.path.join(work, "pack"); shutil.copytree(BASE_DIR, pack)
+        tmp = os.path.join(work, "tmp"); os.makedirs(tmp)
+        ogg = slot_to_ogg("all", {"type": "text", "text": text}, tmp)
+        n = 0
+        for fn in os.listdir(pack):
+            if fn.endswith(".ogg"):
+                shutil.copyfile(ogg, os.path.join(pack, fn)); n += 1
+        out_tmp = os.path.join(work, "pack.tar.gz")
+        with tarfile.open(out_tmp, "w:gz") as tar:
+            for fn in sorted(os.listdir(pack)):
+                tar.add(os.path.join(pack, fn), arcname=fn)
+        raw = open(out_tmp, "rb").read()
+        md5 = hashlib.md5(raw).hexdigest(); size = len(raw)
+        os.makedirs(WWW, exist_ok=True)
+        fname = f"packall-{md5[:8]}.tar.gz"
+        with open(os.path.join(WWW, fname), "wb") as f:
+            f.write(raw)
+        url = f"{HA_BASE_URL}:8099/dl/{fname}"
+        st, resp = ha_service("dreame_vacuum", "vacuum_install_voice_pack", {
+            "entity_id": VACUUM_ENTITY, "lang_id": LANG_ID,
+            "url": url, "md5": md5, "size": size})
+        c = load_config()
+        c["last_build"] = {"url": url, "md5": md5, "size": size, "at": int(time.time())}
+        c["installed"] = {"lang_id": LANG_ID, "md5": md5, "at": int(time.time())}
+        save_config(c)
+        return web.json_response({"ok": True, "overrode": n, "url": url,
+                                  "md5": md5, "size": size, "install_status": st})
+    except Exception as e:
+        traceback.print_exc()
+        return web.json_response({"error": str(e)}, status=500)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
 
 def make_app():
     app = web.Application(client_max_size=64 * 1024 * 1024)
